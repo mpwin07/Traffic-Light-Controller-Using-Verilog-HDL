@@ -31,101 +31,87 @@ Capture screenshots of the waveform and save the simulation logs to include in y
 
 Verilog Code for Traffic Light Controller
 
-// traffic_light_controller.v
-module traffic_light_controller (
-    input wire clk,
-    input wire reset,
-    output reg [2:0] lights  // 3-bit output: [2]=Red, [1]=Yellow, [0]=Green
-);
-    // Define states
-    typedef enum reg [1:0] {
-        GREEN = 2'b00,
-        YELLOW = 2'b01,
-        RED = 2'b10
-    } state_t;
+module Traffic_light(clk, rst, light);
+  input clk, rst;
+  output reg [2:0] light;
 
-    state_t current_state, next_state;
-    reg [3:0] counter;  // Timer counter
-
-    // State transition based on counter
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            current_state <= GREEN;
-            counter <= 0;
-        end else begin
-            if (counter == 4'd9) begin
-                current_state <= next_state;
-                counter <= 0;
-            end else begin
-                counter <= counter + 1;
-            end
+  parameter [1:0] S0 = 2'b00, S1 = 2'b01, S2 = 2'b10;
+  parameter [2:0] Red = 3'b100, Yellow = 3'b010, Green = 3'b001;
+  
+  reg [1:0] state;
+  
+  always @(posedge clk ) begin
+    if (rst) begin
+      light <= 3'b0;
+      state <= S0;  
+    end
+    else begin
+      case (state)
+        S0: begin
+          light <= Green;
+          state <= S1;
         end
+        S1: begin
+          light <= Yellow;
+          state <= S2;
+        end
+        S2: begin
+          light <= Red;
+          state <= S0;
+        end
+        default: light <= 3'b0;
+      endcase
     end
-
-    // Next state logic and output control
-    always @(*) begin
-        case (current_state)
-            GREEN: begin
-                lights = 3'b001;  // Green light on
-                next_state = YELLOW;
-            end
-            YELLOW: begin
-                lights = 3'b010;  // Yellow light on
-                next_state = RED;
-            end
-            RED: begin
-                lights = 3'b100;  // Red light on
-                next_state = GREEN;
-            end
-            default: begin
-                lights = 3'b000;  // All lights off
-                next_state = GREEN;
-            end
-        endcase
-    end
+  end
 endmodule
+
+output:
+![Screenshot 2024-10-05 161856](https://github.com/user-attachments/assets/12ed30e7-e85f-4ec0-9a09-b387b9106756)
+
 
 Testbench for Traffic Light Controller
 
-// traffic_light_controller_tb.v
 `timescale 1ns / 1ps
 
-module traffic_light_controller_tb;
+module Traffic_light_tb;  // Testbench module
 
-    // Inputs
-    reg clk;
-    reg reset;
+  // Inputs to the Traffic_light module
+  reg clk;
+  reg rst;
 
-    // Outputs
-    wire [2:0] lights;
+  // Outputs from the Traffic_light module
+  wire [2:0] light;
 
-    // Instantiate the Unit Under Test (UUT)
-    traffic_light_controller uut (
-        .clk(clk),
-        .reset(reset),
-        .lights(lights)
-    );
+  // Instantiate the Traffic_light module
+  Traffic_light uut (
+    .clk(clk),
+    .rst(rst),
+    .light(light)
+  );
 
-    // Clock generation
-    always #5 clk = ~clk;  // Toggle clock every 5 ns
+  // Clock generation: toggle every 5ns (period = 10ns, frequency = 100MHz)
+  always #5 clk = ~clk;
 
-    // Test procedure
-    initial begin
-        // Initialize inputs
-        clk = 0;
-        reset = 1;
+  // Test sequence
+  initial begin
+    // Initialize inputs
+    clk = 0;
+    rst = 0;
+    rst = 1;
+    #10;
+    rst = 0;
+    #100;
+    rst = 1;
+    #10;
+    rst = 0;
+    #100;
+    $finish;
+  end
 
-        // Release reset after some time
-        #10 reset = 0;
-
-        // Run simulation for 100 ns to observe light transitions
-        #100 $stop;
-    end
-
-    // Monitor outputs
-    initial begin
-        $monitor("Time=%0t | Lights (R Y G) = %b", $time, lights);
-    end
+ 
+  initial begin
+    $monitor("At time %t, Light = %b (Red = 100, Yellow = 010, Green = 001)", $time, light);
+  end
 
 endmodule
 
